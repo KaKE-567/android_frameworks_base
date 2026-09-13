@@ -1156,6 +1156,7 @@ public class Instrumentation {
             ClassNotFoundException {
         Application app = getFactory(context.getPackageName())
                 .instantiateApplication(cl, className);
+        com.android.internal.util.GamePropsUtils.setProps(context);
         app.attach(context);
         return app;
     }
@@ -1173,6 +1174,7 @@ public class Instrumentation {
             throws InstantiationException, IllegalAccessException, 
             ClassNotFoundException {
         Application app = (Application)clazz.newInstance();
+        com.android.internal.util.GamePropsUtils.setProps(context);
         app.attach(context);
         return app;
     }

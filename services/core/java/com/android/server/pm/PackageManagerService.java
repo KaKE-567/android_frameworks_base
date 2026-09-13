@@ -337,6 +337,7 @@ import com.android.internal.util.ConcurrentUtils;
 import com.android.internal.util.DumpUtils;
 import com.android.internal.util.FastXmlSerializer;
 import com.android.internal.util.FrameworkStatsLog;
+import com.android.internal.util.GamePropsUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Preconditions;
 import com.android.server.AttributeCache;
@@ -5997,8 +5998,7 @@ public class PackageManagerService extends IPackageManager.Stub
         // allow instant applications
         ArrayList<FeatureInfo> res;
         synchronized (mAvailableFeatures) {
-            res = new ArrayList<>(mAvailableFeatures.size() + 1);
-            res.addAll(mAvailableFeatures.values());
+            res = new ArrayList<>(mAvailableFeatures.values());
         }
         final FeatureInfo fi = new FeatureInfo();
         fi.reqGlEsVersion = SystemProperties.getInt("ro.opengles.version",
@@ -7747,6 +7747,10 @@ public class PackageManagerService extends IPackageManager.Stub
                 installerInfo.icon = info.resolveIconResId();
                 installerInfo.isInstantAppAvailable = true;
                 resolveInfos.set(i, installerInfo);
+                continue;
+            }
+            if (info.activityInfo != null && ("com.android.packageinstaller".equals(info.activityInfo.packageName)
+                    || "com.google.android.packageinstaller".equals(info.activityInfo.packageName))) {
                 continue;
             }
             if (ephemeralPkgName == null) {
@@ -21817,6 +21821,9 @@ public class PackageManagerService extends IPackageManager.Stub
                 if (Process.isIsolated(uid)) {
                     return Zygote.MOUNT_EXTERNAL_NONE;
                 }
+                if (packageName != null && GamePropsUtils.isStorageExemptPackage(packageName)) {
+                    return Zygote.MOUNT_EXTERNAL_FULL;
+                }
                 if (checkUidPermission(READ_EXTERNAL_STORAGE, uid) == PERMISSION_DENIED) {
                     return Zygote.MOUNT_EXTERNAL_DEFAULT;
                 }
@@ -24055,32 +24062,8 @@ public class PackageManagerService extends IPackageManager.Stub
      */
     private static void checkDowngrade(AndroidPackage before, PackageInfoLite after)
             throws PackageManagerException {
-        if (after.getLongVersionCode() < before.getLongVersionCode()) {
-            throw new PackageManagerException(INSTALL_FAILED_VERSION_DOWNGRADE,
-                    "Update version code " + after.versionCode + " is older than current "
-                    + before.getLongVersionCode());
-        } else if (after.getLongVersionCode() == before.getLongVersionCode()) {
-            if (after.baseRevisionCode < before.getBaseRevisionCode()) {
-                throw new PackageManagerException(INSTALL_FAILED_VERSION_DOWNGRADE,
-                        "Update base revision code " + after.baseRevisionCode
-                        + " is older than current " + before.getBaseRevisionCode());
-            }
-
-            if (!ArrayUtils.isEmpty(after.splitNames)) {
-                for (int i = 0; i < after.splitNames.length; i++) {
-                    final String splitName = after.splitNames[i];
-                    final int j = ArrayUtils.indexOf(before.getSplitNames(), splitName);
-                    if (j != -1) {
-                        if (after.splitRevisionCodes[i] < before.getSplitRevisionCodes()[j]) {
-                            throw new PackageManagerException(INSTALL_FAILED_VERSION_DOWNGRADE,
-                                    "Update split " + splitName + " revision code "
-                                    + after.splitRevisionCodes[i] + " is older than current "
-                                    + before.getSplitRevisionCodes()[j]);
-                        }
-                    }
-                }
-            }
-        }
+        // App downgrade allowed unconditionally
+        return;
     }
 
     private static class MoveCallbacks extends Handler {

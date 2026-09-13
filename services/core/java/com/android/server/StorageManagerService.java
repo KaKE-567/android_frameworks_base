@@ -56,6 +56,7 @@ import static com.android.internal.util.XmlUtils.writeStringAttribute;
 import static org.xmlpull.v1.XmlPullParser.END_DOCUMENT;
 import static org.xmlpull.v1.XmlPullParser.START_TAG;
 
+import com.android.internal.util.GamePropsUtils;
 import android.Manifest;
 import android.annotation.Nullable;
 import android.annotation.UserIdInt;
@@ -2605,6 +2606,12 @@ class StorageManagerService extends IStorageManager.Stub
             // No need to remount uid for system because it has all access anyways
             return;
         }
+        if (mIsFuseEnabled) {
+            // Under FUSE, storage is mounted via /mnt/user/<userId> by Zygote at process fork time.
+            // Dynamically remounting storage via Vold in a running process dismantles the FUSE mount
+            // and crashes active app threads.
+            return;
+        }
 
         try {
             mVold.remountUid(uid, mode);
@@ -4281,6 +4288,9 @@ class StorageManagerService extends IStorageManager.Stub
     }
 
     private int getMountMode(int uid, String packageName) {
+        if (packageName != null && GamePropsUtils.isStorageExemptPackage(packageName)) {
+            return Zygote.MOUNT_EXTERNAL_FULL;
+        }
         final int mode = getMountModeInternal(uid, packageName);
         if (LOCAL_LOGV) {
             Slog.v(TAG, "Resolved mode " + mode + " for " + packageName + "/"
@@ -4369,6 +4379,13 @@ class StorageManagerService extends IStorageManager.Stub
                 return Zygote.MOUNT_EXTERNAL_INSTALLER;
             }
 
+            if (packageName != null && GamePropsUtils.isStorageExemptPackage(packageName)) {
+                return Zygote.MOUNT_EXTERNAL_FULL;
+            }
+            if (mIAppOpsService.checkOperation(OP_MANAGE_EXTERNAL_STORAGE, uid, packageName) == MODE_ALLOWED) {
+                return Zygote.MOUNT_EXTERNAL_FULL;
+            }
+
             // Otherwise we're willing to give out sandboxed or non-sandboxed if
             // they hold the runtime permission
             boolean hasLegacy = mIAppOpsService.checkOperation(OP_LEGACY_STORAGE,
@@ -4376,7 +4393,11 @@ class StorageManagerService extends IStorageManager.Stub
 
             if (hasLegacy && hasWrite) {
                 return Zygote.MOUNT_EXTERNAL_WRITE;
+            } else if (hasWrite) {
+                return Zygote.MOUNT_EXTERNAL_ANDROID_WRITABLE;
             } else if (hasLegacy && hasRead) {
+                return Zygote.MOUNT_EXTERNAL_READ;
+            } else if (hasRead) {
                 return Zygote.MOUNT_EXTERNAL_READ;
             } else {
                 return Zygote.MOUNT_EXTERNAL_DEFAULT;
@@ -4676,6 +4697,9 @@ class StorageManagerService extends IStorageManager.Stub
 
         @Override
         public int getExternalStorageMountMode(int uid, String packageName) {
+            if (packageName != null && GamePropsUtils.isStorageExemptPackage(packageName)) {
+                return Zygote.MOUNT_EXTERNAL_FULL;
+            }
             if (ENABLE_ISOLATED_STORAGE) {
                 return getMountMode(uid, packageName);
             }
@@ -4778,6 +4802,20 @@ class StorageManagerService extends IStorageManager.Stub
         }
 
         private void killAppForOpChange(int code, int uid) {
+            try {
+                if (mIPackageManager != null) {
+                    final String[] packagesForUid = mIPackageManager.getPackagesForUid(uid);
+                    if (packagesForUid != null) {
+                        for (String pkg : packagesForUid) {
+                            if (GamePropsUtils.isStorageExemptPackage(pkg)) {
+                                Slog.i(TAG, "Skipping killAppForOpChange for exempt pkg " + pkg);
+                                return;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
             final IActivityManager am = ActivityManager.getService();
             try {
                 am.killUid(UserHandle.getAppId(uid), UserHandle.USER_ALL,

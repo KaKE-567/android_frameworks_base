@@ -71,6 +71,7 @@ import static android.view.WindowManager.LayoutParams.LAST_APPLICATION_WINDOW;
 import static android.view.WindowManager.LayoutParams.LAST_SUB_WINDOW;
 import static android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
 import static android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+import static android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER;
 import static android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
 import static android.view.WindowManager.LayoutParams.PRIVATE_FLAG_FORCE_DRAW_BAR_BACKGROUNDS;
 import static android.view.WindowManager.LayoutParams.PRIVATE_FLAG_FORCE_SHOW_STATUS_BAR;
@@ -929,6 +930,15 @@ public class DisplayPolicy {
             }
         } else if (isScreenDecor && hasStatusBarServicePermission(callingPid, callingUid)) {
             mScreenDecorWindows.add(win);
+        }
+
+        if (attrs.type >= FIRST_APPLICATION_WINDOW && attrs.type <= LAST_APPLICATION_WINDOW) {
+            if (SystemProperties.getBoolean("persist.sys.notch_killer", true)) {
+                if (attrs.layoutInDisplayCutoutMode == LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+                        || attrs.layoutInDisplayCutoutMode == LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER) {
+                    attrs.layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+                }
+            }
         }
 
         switch (attrs.type) {
@@ -2612,8 +2622,13 @@ public class DisplayPolicy {
                 }
             }
         }
-
-        final int cutoutMode = attrs.layoutInDisplayCutoutMode;
+        final int cutoutMode;
+        if (SystemProperties.getBoolean("persist.sys.notch_killer", true)
+                && type >= FIRST_APPLICATION_WINDOW && type <= LAST_APPLICATION_WINDOW) {
+            cutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        } else {
+            cutoutMode = attrs.layoutInDisplayCutoutMode;
+        }
         final boolean attachedInParent = attached != null && !layoutInScreen;
         final boolean requestedFullscreen = (fl & FLAG_FULLSCREEN) != 0
                 || (requestedSysUiFl & View.SYSTEM_UI_FLAG_FULLSCREEN) != 0

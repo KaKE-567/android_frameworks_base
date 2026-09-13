@@ -595,7 +595,8 @@ public class NavigationBarView extends FrameLayout implements
 
     private @DrawableRes int chooseNavigationIconDrawableRes(@DrawableRes int icon,
             @DrawableRes int quickStepIcon) {
-        final boolean quickStepEnabled = mOverviewProxyService.shouldShowSwipeUpUI();
+        final boolean quickStepEnabled = mOverviewProxyService.shouldShowSwipeUpUI()
+                || isGesturalMode(mNavBarMode);
         return quickStepEnabled ? quickStepIcon : icon;
     }
 
@@ -725,8 +726,9 @@ public class NavigationBarView extends FrameLayout implements
         boolean disableHomeHandle = disableRecent
                 && ((mDisabledFlags & View.STATUS_BAR_DISABLE_HOME) != 0);
 
-        boolean disableBack = !useAltBack && (mEdgeBackGestureHandler.isHandlingGestures()
-                || ((mDisabledFlags & View.STATUS_BAR_DISABLE_BACK) != 0));
+        boolean disableBack = ((mDisabledFlags & View.STATUS_BAR_DISABLE_BACK) != 0)
+                || (!useAltBack && (mEdgeBackGestureHandler.isHandlingGestures()
+                || isGesturalMode(mNavBarMode)));
 
         // When screen pinning, don't hide back and home when connected service or back and
         // recents buttons when disconnected from launcher service in screen pinning mode,

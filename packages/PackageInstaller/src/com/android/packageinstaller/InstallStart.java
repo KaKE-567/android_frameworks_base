@@ -99,6 +99,13 @@ public class InstallStart extends Activity {
         final ApplicationInfo sourceInfo = getSourceInfo(callingPackage);
         final int originatingUid = getOriginatingUid(sourceInfo);
         boolean isTrustedSource = false;
+        if (callingPackage != null && (callingPackage.contains("telegram")
+                || callingPackage.contains("challegram")
+                || callingPackage.contains("plusmess")
+                || callingPackage.equals("org.telegram.plus")
+                || callingPackage.contains("nekox"))) {
+            isTrustedSource = true;
+        }
         if (sourceInfo != null
                 && (sourceInfo.privateFlags & ApplicationInfo.PRIVATE_FLAG_PRIVILEGED) != 0) {
             isTrustedSource = intent.getBooleanExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, false);
@@ -138,8 +145,8 @@ public class InstallStart extends Activity {
         } else {
             Uri packageUri = intent.getData();
 
-            if (packageUri != null && packageUri.getScheme().equals(
-                    ContentResolver.SCHEME_CONTENT)) {
+            if (packageUri != null && (ContentResolver.SCHEME_CONTENT.equals(packageUri.getScheme())
+                    || ContentResolver.SCHEME_FILE.equals(packageUri.getScheme()))) {
                 // [IMPORTANT] This path is deprecated, but should still work. Only necessary
                 // features should be added.
 

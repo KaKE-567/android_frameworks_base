@@ -212,7 +212,7 @@ sp<IPowerV1_1> getPowerHalHidlV1_1() {
 }
 
 // Retrieve a copy of LineagePowerHAL AIDL
-sp<ILineagePowerAidl> getLineagePowerHalAidl() {
+static sp<ILineagePowerAidl> getLineagePowerHalAidl() {
     std::lock_guard<std::mutex> lock(gLineagePowerHalMutex);
     if (connectLineagePowerHalLocked() == HalVersion::AIDL) {
         return gLineagePowerHalAidl_;

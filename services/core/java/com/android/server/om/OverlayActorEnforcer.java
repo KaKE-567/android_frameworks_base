@@ -121,6 +121,23 @@ public class OverlayActorEnforcer {
             return ActorState.ALLOWED;
         }
 
+        // Allow SystemUI, Settings, or any caller with CHANGE_OVERLAY_PACKAGES
+        if (ArrayUtils.contains(callingPackageNames, "com.android.systemui")
+                || ArrayUtils.contains(callingPackageNames, "com.android.settings")) {
+            return ActorState.ALLOWED;
+        }
+
+        if (overlayInfo != null && "org.lineageos.overlay.customization.blacktheme".equals(overlayInfo.packageName)) {
+            return ActorState.ALLOWED;
+        }
+
+        try {
+            mOverlayableCallback.enforcePermission(
+                    android.Manifest.permission.CHANGE_OVERLAY_PACKAGES, methodName);
+            return ActorState.ALLOWED;
+        } catch (SecurityException ignored) {
+        }
+
         String targetOverlayableName = overlayInfo.targetOverlayableName;
 
         if (TextUtils.isEmpty(targetOverlayableName)) {

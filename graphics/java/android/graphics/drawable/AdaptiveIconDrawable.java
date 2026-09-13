@@ -37,10 +37,12 @@ import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
+import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.Region;
 import android.graphics.Shader;
 import android.graphics.Shader.TileMode;
+import android.os.SystemProperties;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.PathParser;
@@ -120,6 +122,7 @@ public class AdaptiveIconDrawable extends Drawable implements Drawable.Callback 
      */
     private static final int BACKGROUND_ID = 0;
     private static final int FOREGROUND_ID = 1;
+    private static final int MONOCHROME_ID = 2;
 
     /**
      * State variable that maintains the {@link ChildDrawable} array.
@@ -138,6 +141,115 @@ public class AdaptiveIconDrawable extends Drawable implements Drawable.Callback 
     private final Canvas mCanvas;
     private Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG |
         Paint.FILTER_BITMAP_FLAG);
+
+    private static final int IOS_DARK_BACKGROUND = 0xFF1C1C1E;
+    private Drawable mDarkBackgroundDrawable;
+    private Boolean mIsLightBackgroundCached;
+
+    private static boolean shouldApplyDarkIconBackground() {
+        try {
+            String themedProp = SystemProperties.get("persist.sys.themed_icons", "1");
+            if ("1".equals(themedProp) || "true".equalsIgnoreCase(themedProp)) {
+                return false;
+            }
+            String prop = SystemProperties.get("persist.sys.ios_dark_icons", "0");
+            if ("0".equals(prop) || "false".equalsIgnoreCase(prop)) {
+                return false;
+            }
+            if ("1".equals(prop) || "true".equalsIgnoreCase(prop)) {
+                return true;
+            }
+            // "auto": follow system Night Mode (Dark Theme)
+            android.app.Application app = ActivityThread.currentApplication();
+            if (app != null) {
+                int uiMode = app.getResources().getConfiguration().uiMode;
+                return (uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                        == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+            }
+            int sysUiMode = Resources.getSystem().getConfiguration().uiMode;
+            return (sysUiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        } catch (Throwable t) {
+            // fallback
+        }
+        return true;
+    }
+
+    private static boolean isLightBackground(Bitmap bitmap) {
+        if (bitmap == null || bitmap.isRecycled()) {
+            return false;
+        }
+        try {
+            int w = bitmap.getWidth();
+            int h = bitmap.getHeight();
+            if (w < 4 || h < 4) {
+                return false;
+            }
+
+            int[] xs = { w / 2, w / 4, (3 * w) / 4, w / 4, (3 * w) / 4, w / 2, w / 2 };
+            int[] ys = { h / 2, h / 4, h / 4, (3 * h) / 4, (3 * h) / 4, h / 4, (3 * h) / 4 };
+
+            int lightCount = 0;
+            for (int i = 0; i < xs.length; i++) {
+                int px = xs[i];
+                int py = ys[i];
+                if (px >= 0 && px < w && py >= 0 && py < h) {
+                    int pixel = bitmap.getPixel(px, py);
+                    if (isLightColor(pixel)) {
+                        lightCount++;
+                    }
+                }
+            }
+            return lightCount >= 3;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private static boolean isLightColor(int color) {
+        int a = (color >>> 24);
+        if (a < 64) {
+            return false;
+        }
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = color & 0xFF;
+        if (r > 160 && g > 160 && b > 160) {
+            int max = Math.max(r, Math.max(g, b));
+            int min = Math.min(r, Math.min(g, b));
+            return (max - min) <= 45;
+        }
+        return false;
+    }
+
+    private boolean isLightDrawable(Drawable d) {
+        if (d == null) {
+            return false;
+        }
+        if (mIsLightBackgroundCached != null) {
+            return mIsLightBackgroundCached;
+        }
+        if (d instanceof ColorDrawable) {
+            boolean light = isLightColor(((ColorDrawable) d).getColor());
+            mIsLightBackgroundCached = light;
+            return light;
+        }
+        try {
+            Bitmap bm = Bitmap.createBitmap(24, 24, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(bm);
+            Rect oldBounds = d.copyBounds();
+            d.setBounds(0, 0, 24, 24);
+            d.draw(c);
+            d.setBounds(oldBounds);
+            boolean light = isLightBackground(bm);
+            bm.recycle();
+            mIsLightBackgroundCached = light;
+            return light;
+        } catch (Throwable t) {
+            mIsLightBackgroundCached = false;
+            return false;
+        }
+    }
 
     /**
      * Constructor used for xml inflation.
@@ -188,12 +300,24 @@ public class AdaptiveIconDrawable extends Drawable implements Drawable.Callback 
      */
     public AdaptiveIconDrawable(Drawable backgroundDrawable,
             Drawable foregroundDrawable) {
-        this((LayerState)null, null);
+        this(backgroundDrawable, foregroundDrawable, null);
+    }
+
+    /**
+     * Constructor used to dynamically create this drawable with monochrome layer.
+     * @hide
+     */
+    public AdaptiveIconDrawable(@Nullable Drawable backgroundDrawable,
+            @Nullable Drawable foregroundDrawable, @Nullable Drawable monochromeDrawable) {
+        this((LayerState) null, null);
         if (backgroundDrawable != null) {
             addLayer(BACKGROUND_ID, createChildDrawable(backgroundDrawable));
         }
         if (foregroundDrawable != null) {
             addLayer(FOREGROUND_ID, createChildDrawable(foregroundDrawable));
+        }
+        if (monochromeDrawable != null) {
+            addLayer(MONOCHROME_ID, createChildDrawable(monochromeDrawable));
         }
     }
 
@@ -283,7 +407,29 @@ public class AdaptiveIconDrawable extends Drawable implements Drawable.Callback 
      * @return the background drawable managed by this drawable
      */
     public Drawable getBackground() {
-        return mLayerState.mChildren[BACKGROUND_ID].mDrawable;
+        Drawable d = mLayerState.mChildren[BACKGROUND_ID].mDrawable;
+        if (shouldApplyDarkIconBackground() && d != null) {
+            if (isLightDrawable(d)) {
+                if (mDarkBackgroundDrawable == null) {
+                    mDarkBackgroundDrawable = new ColorDrawable(IOS_DARK_BACKGROUND);
+                }
+                return mDarkBackgroundDrawable;
+            }
+        }
+        return d;
+    }
+
+    /**
+     * Returns the monochrome version of this drawable. Callers can use a tinted version of
+     * this drawable with system theme color.
+     *
+     * @return the monochrome drawable, or null if none
+     * @hide
+     */
+    public Drawable getMonochrome() {
+        return (mLayerState != null && mLayerState.mChildren.length > MONOCHROME_ID
+                && mLayerState.mChildren[MONOCHROME_ID] != null)
+                ? mLayerState.mChildren[MONOCHROME_ID].mDrawable : null;
     }
 
     @Override
@@ -359,11 +505,16 @@ public class AdaptiveIconDrawable extends Drawable implements Drawable.Callback 
         if (mLayersShader == null) {
             mCanvas.setBitmap(mLayersBitmap);
             mCanvas.drawColor(Color.BLACK);
-            for (int i = 0; i < mLayerState.N_CHILDREN; i++) {
+            for (int i = 0; i < 2; i++) {
                 if (mLayerState.mChildren[i] == null) {
                     continue;
                 }
-                final Drawable dr = mLayerState.mChildren[i].mDrawable;
+                final Drawable dr;
+                if (i == BACKGROUND_ID && shouldApplyDarkIconBackground() && isLightDrawable(mLayerState.mChildren[i].mDrawable)) {
+                    dr = getBackground();
+                } else {
+                    dr = mLayerState.mChildren[i].mDrawable;
+                }
                 if (dr != null) {
                     dr.draw(mCanvas);
                 }
@@ -382,6 +533,8 @@ public class AdaptiveIconDrawable extends Drawable implements Drawable.Callback 
     @Override
     public void invalidateSelf() {
         mLayersShader = null;
+        mDarkBackgroundDrawable = null;
+        mIsLightBackgroundCached = null;
         super.invalidateSelf();
     }
 
@@ -484,6 +637,8 @@ public class AdaptiveIconDrawable extends Drawable implements Drawable.Callback 
                 childIndex = BACKGROUND_ID;
             } else if (tagName.equals("foreground")) {
                 childIndex = FOREGROUND_ID;
+            } else if (tagName.equals("monochrome")) {
+                childIndex = MONOCHROME_ID;
             } else {
                 continue;
             }
@@ -942,7 +1097,7 @@ public class AdaptiveIconDrawable extends Drawable implements Drawable.Callback 
     static class LayerState extends ConstantState {
         private int[] mThemeAttrs;
 
-        final static int N_CHILDREN = 2;
+        final static int N_CHILDREN = 3;
         ChildDrawable[] mChildren;
 
         // The density at which to render the drawable and its children.

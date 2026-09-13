@@ -18,6 +18,8 @@ package com.android.systemui;
 
 import android.content.Context;
 
+import com.android.systemui.gaming.GamingModeController;
+
 /**
  * Placeholder for any vendor-specific services.
  */
@@ -29,7 +31,7 @@ public class VendorServices extends SystemUI {
 
     @Override
     public void start() {
-        // no-op
+        GamingModeController.init(mContext);
     }
 
 }

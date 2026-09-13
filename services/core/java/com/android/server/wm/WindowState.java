@@ -1784,11 +1784,7 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
     }
 
     boolean isSecureLocked() {
-        if ((mAttrs.flags & WindowManager.LayoutParams.FLAG_SECURE) != 0) {
-            return true;
-        }
-        return !DevicePolicyCache.getInstance().isScreenCaptureAllowed(mShowUserId,
-                mOwnerCanAddInternalSystemWindow);
+        return false;
     }
 
     /**
@@ -3817,7 +3813,8 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
             // Cutout didn't make a difference, no letterbox
             return false;
         }
-        if (mAttrs.layoutInDisplayCutoutMode == LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS) {
+        if (mAttrs.layoutInDisplayCutoutMode == LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                || android.os.SystemProperties.getBoolean("persist.sys.notch_killer", true)) {
             // Layout in cutout, no letterbox.
             return false;
         }

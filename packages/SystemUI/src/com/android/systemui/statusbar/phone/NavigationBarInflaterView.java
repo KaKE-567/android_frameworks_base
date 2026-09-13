@@ -166,6 +166,7 @@ public class NavigationBarInflaterView extends FrameLayout
     public void onNavigationModeChanged(int mode) {
         mNavBarMode = mode;
         updateHint();
+        onLikelyDefaultLayoutChange();
     }
 
     @Override

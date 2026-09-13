@@ -634,12 +634,9 @@ public class PackageInstallerService extends IPackageInstaller.Stub implements
             }
         }
 
-        if (Build.IS_DEBUGGABLE || isCalledBySystemOrShell(callingUid)) {
-            params.installFlags |= PackageManager.INSTALL_ALLOW_DOWNGRADE;
-        } else {
-            params.installFlags &= ~PackageManager.INSTALL_ALLOW_DOWNGRADE;
-            params.installFlags &= ~PackageManager.INSTALL_REQUEST_DOWNGRADE;
-        }
+        // Allow app downgrade for all callers
+        params.installFlags |= PackageManager.INSTALL_ALLOW_DOWNGRADE;
+        params.installFlags |= PackageManager.INSTALL_REQUEST_DOWNGRADE;
 
         if (callingUid != Process.SYSTEM_UID
                 && (params.installFlags & ADB_DEV_MODE) != ADB_DEV_MODE) {

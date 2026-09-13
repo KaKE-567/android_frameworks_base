@@ -3223,6 +3223,66 @@
   <java-symbol type="string" name="config_batterymeterBoltPath" />
   <java-symbol type="string" name="config_batterymeterPowersavePath" />
   <java-symbol type="bool" name="config_batterymeterDualTone" />
+  <java-symbol type="string" name="config_batterymeterRLandPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterRLandFillMask" />
+  <java-symbol type="string" name="config_batterymeterRLandBoltPath" />
+  <java-symbol type="string" name="config_batterymeterRLandPowersavePath" />
+  <java-symbol type="string" name="config_batterymeterRLandErrorPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterLandPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterLandFillMask" />
+  <java-symbol type="string" name="config_batterymeterLandBoltPath" />
+  <java-symbol type="string" name="config_batterymeterLandPowersavePath" />
+  <java-symbol type="string" name="config_batterymeterLandErrorPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterRLandAPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterRLandAFillMask" />
+  <java-symbol type="string" name="config_batterymeterRLandABoltPath" />
+  <java-symbol type="string" name="config_batterymeterRLandAPowersavePath" />
+  <java-symbol type="string" name="config_batterymeterRLandAErrorPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterLandAPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterLandAFillMask" />
+  <java-symbol type="string" name="config_batterymeterLandABoltPath" />
+  <java-symbol type="string" name="config_batterymeterLandAPowersavePath" />
+  <java-symbol type="string" name="config_batterymeterLandAErrorPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterRLandBPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterRLandBFillMask" />
+  <java-symbol type="string" name="config_batterymeterRLandBBoltPath" />
+  <java-symbol type="string" name="config_batterymeterRLandBPowersavePath" />
+  <java-symbol type="string" name="config_batterymeterRLandBErrorPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterLandBPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterLandBFillMask" />
+  <java-symbol type="string" name="config_batterymeterLandBBoltPath" />
+  <java-symbol type="string" name="config_batterymeterLandBPowersavePath" />
+  <java-symbol type="string" name="config_batterymeterLandBErrorPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterLandCapsulePerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterLandCapsuleFillMask" />
+  <java-symbol type="string" name="config_batterymeterLandCapsulePowersavePath" />
+  <java-symbol type="string" name="config_batterymeterLandCapsuleErrorPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterIosPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterIosFillMask" />
+  <java-symbol type="string" name="config_batterymeterIosBoltPath" />
+  <java-symbol type="string" name="config_batterymeterIosPowersavePath" />
+  <java-symbol type="string" name="config_batterymeterIosErrorPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterMxPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterMxFillMask" />
+  <java-symbol type="string" name="config_batterymeterMxBoltPath" />
+  <java-symbol type="string" name="config_batterymeterMxPowersavePath" />
+  <java-symbol type="string" name="config_batterymeterMxErrorPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterAirooPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterAirooFillMask" />
+  <java-symbol type="string" name="config_batterymeterAirooBoltPath" />
+  <java-symbol type="string" name="config_batterymeterAirooPowersavePath" />
+  <java-symbol type="string" name="config_batterymeterAirooErrorPerimeterPath" />
+  <java-symbol type="string" name="config_batterymeterLandPerimeterPathiOS15" />
+  <java-symbol type="string" name="config_batterymeterLandFillMaskiOS15" />
+  <java-symbol type="string" name="config_batterymeterLandBoltPathiOS15" />
+  <java-symbol type="string" name="config_batterymeterLandPowersavePathiOS15" />
+  <java-symbol type="string" name="config_batterymeterLandErrorPerimeterPathiOS15" />
+  <java-symbol type="string" name="config_batterymeterLandPerimeterPathOneUI7" />
+  <java-symbol type="string" name="config_batterymeterLandFillMaskOneUI7" />
+  <java-symbol type="string" name="config_batterymeterLandBoltPathOneUI7" />
+  <java-symbol type="string" name="config_batterymeterLandPowersavePathOneUI7" />
+  <java-symbol type="string" name="config_batterymeterLandErrorPerimeterPathOneUI7" />
+  <java-symbol type="string" name="config_batterymeterLandLeafPathOneUI7" />
   <java-symbol type="string" name="config_signalXPath" />
   <java-symbol type="dimen" name="config_signalCutoutWidthFraction" />
   <java-symbol type="dimen" name="config_signalCutoutHeightFraction" />

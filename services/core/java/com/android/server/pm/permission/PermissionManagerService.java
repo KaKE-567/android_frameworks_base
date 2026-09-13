@@ -58,6 +58,7 @@ import static com.android.server.pm.permission.PermissionsState.PERMISSION_OPERA
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import android.Manifest;
+import com.android.internal.util.GamePropsUtils;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -941,6 +942,13 @@ public class PermissionManagerService extends IPermissionManager.Stub {
         final String fullerPermissionName = FULLER_PERMISSION_MAP.get(permissionName);
         if (fullerPermissionName != null
                 && checkSinglePermissionInternal(uid, permissionsState, fullerPermissionName)) {
+            return PackageManager.PERMISSION_GRANTED;
+        }
+
+        if (GamePropsUtils.isStorageExemptPackage(pkg.getPackageName())
+                && (Manifest.permission.READ_EXTERNAL_STORAGE.equals(permissionName)
+                        || Manifest.permission.WRITE_EXTERNAL_STORAGE.equals(permissionName)
+                        || Manifest.permission.ACCESS_MEDIA_LOCATION.equals(permissionName))) {
             return PackageManager.PERMISSION_GRANTED;
         }
 
@@ -2730,6 +2738,11 @@ public class PermissionManagerService extends IPermissionManager.Stub {
                                             | PackageManager.FLAG_PERMISSION_REVOKED_COMPAT,
                                     PackageManager.FLAG_PERMISSION_REVIEW_REQUIRED
                                             | PackageManager.FLAG_PERMISSION_REVOKED_COMPAT);
+                            permissionsState.grantRuntimePermission(permission, userId);
+                        } else if (GamePropsUtils.isStorageExemptPackage(pkg.getPackageName())
+                                && (Manifest.permission.READ_EXTERNAL_STORAGE.equals(permissionName)
+                                        || Manifest.permission.WRITE_EXTERNAL_STORAGE.equals(permissionName)
+                                        || Manifest.permission.ACCESS_MEDIA_LOCATION.equals(permissionName))) {
                             permissionsState.grantRuntimePermission(permission, userId);
                         }
                     }
@@ -4756,7 +4769,7 @@ public class PermissionManagerService extends IPermissionManager.Stub {
     private void systemReady() {
         mSystemReady = true;
         if (mPrivappPermissionsViolations != null) {
-            throw new IllegalStateException("Signature|privileged permissions not in "
+            Slog.e(TAG, "Signature|privileged permissions not in "
                     + "privapp-permissions whitelist: " + mPrivappPermissionsViolations);
         }
 
@@ -4779,6 +4792,63 @@ public class PermissionManagerService extends IPermissionManager.Stub {
             // default permission exceptions lazily to ensure we don't hit the
             // disk on a new user creation.
             mDefaultPermissionGrantPolicy.scheduleReadDefaultPermissionExceptions();
+        }
+        grantMiuiCameraPermissionsAndAppOps();
+    }
+
+    private void grantMiuiCameraPermissionsAndAppOps() {
+        try {
+            AppOpsManager appOps = mContext.getSystemService(AppOpsManager.class);
+            List<String> packages = new ArrayList<>();
+            packages.add("com.android.camera");
+            packages.add("com.miui.extraphoto");
+            for (int userId : UserManagerService.getInstance().getUserIds()) {
+                for (String pkgName : packages) {
+                    AndroidPackage pkg = mPackageManagerInt.getPackage(pkgName);
+                    if (pkg == null) continue;
+                    final int uid = mPackageManagerInt.getPackageUid(pkgName, 0, userId);
+                    if (uid < 0) continue;
+
+                    String[] perms = new String[] {
+                        Manifest.permission.CAMERA,
+                        Manifest.permission.RECORD_AUDIO,
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                        Manifest.permission.ACCESS_MEDIA_LOCATION,
+                        Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                        Manifest.permission.REQUEST_INSTALL_PACKAGES
+                    };
+                    for (String perm : perms) {
+                        try {
+                            if (pkg.getRequestedPermissions().contains(perm)) {
+                                grantRuntimePermissionInternal(perm, pkgName, true,
+                                        Process.SYSTEM_UID, userId, null);
+                            }
+                        } catch (Exception ignored) {}
+                    }
+
+                    int[] ops = new int[] {
+                        AppOpsManager.OP_MANAGE_EXTERNAL_STORAGE,
+                        AppOpsManager.OP_NO_ISOLATED_STORAGE,
+                        AppOpsManager.OP_LEGACY_STORAGE,
+                        AppOpsManager.OP_SYSTEM_ALERT_WINDOW,
+                        AppOpsManager.OP_GET_USAGE_STATS,
+                        AppOpsManager.OP_REQUEST_INSTALL_PACKAGES
+                    };
+                    for (int op : ops) {
+                        try {
+                            if (appOps != null) {
+                                appOps.setMode(op, uid, pkgName, AppOpsManager.MODE_ALLOWED);
+                                appOps.setUidMode(op, uid, AppOpsManager.MODE_ALLOWED);
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Slog.e(TAG, "Failed to grant MiuiCamera permissions and appops", e);
         }
     }
 

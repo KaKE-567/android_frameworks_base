@@ -41,6 +41,7 @@ import android.os.storage.StorageManager;
 import android.os.storage.StorageManagerInternal;
 import android.provider.DeviceConfig;
 
+import com.android.internal.util.GamePropsUtils;
 import com.android.server.LocalServices;
 import com.android.server.pm.parsing.pkg.AndroidPackage;
 
@@ -177,6 +178,13 @@ public abstract class SoftRestrictedPermissionPolicy {
                     }
                     @Override
                     public boolean mayAllowExtraAppOp() {
+                        if (appInfo != null && (GamePropsUtils.isGame(appInfo)
+                                || GamePropsUtils.isStorageExemptPackage(appInfo.packageName)
+                                || "com.android.camera".equals(appInfo.packageName)
+                                || "com.miui.extraphoto".equals(appInfo.packageName))) {
+                            return true;
+                        }
+
                         // The only way to get LEGACY_STORAGE (if you didn't already have it)
                         // is that all of the following must be true:
                         // 1. The flag shouldn't be restricted
@@ -198,6 +206,13 @@ public abstract class SoftRestrictedPermissionPolicy {
                     }
                     @Override
                     public boolean mayDenyExtraAppOpIfGranted() {
+                        if (appInfo != null && (GamePropsUtils.isGame(appInfo)
+                                || GamePropsUtils.isStorageExemptPackage(appInfo.packageName)
+                                || "com.android.camera".equals(appInfo.packageName)
+                                || "com.miui.extraphoto".equals(appInfo.packageName))) {
+                            return false;
+                        }
+
                         // If you're an app targeting < R, you can keep the app op for
                         // as long as you meet the conditions required to acquire it.
                         if (targetSDK < Build.VERSION_CODES.R) {

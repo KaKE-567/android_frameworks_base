@@ -834,11 +834,7 @@ public class SurfaceView extends View implements ViewRootImpl.SurfaceChangedCall
      * @param isSecure True if the surface view is secure.
      */
     public void setSecure(boolean isSecure) {
-        if (isSecure) {
-            mSurfaceFlags |= SurfaceControl.SECURE;
-        } else {
-            mSurfaceFlags &= ~SurfaceControl.SECURE;
-        }
+        mSurfaceFlags &= ~SurfaceControl.SECURE;
     }
 
     private void updateOpaqueFlag() {

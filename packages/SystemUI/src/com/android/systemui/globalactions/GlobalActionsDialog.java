@@ -446,7 +446,14 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
 
         Dependency.get(TunerService.class).addTunable(this, POWER_MENU_ACTIONS_STRING);
 
-        mActions = mLineageGlobalActions.getUserActionsArray();
+        try {
+            mActions = mLineageGlobalActions.getUserActionsArray();
+        } catch (Throwable t) {
+            Log.e(TAG, "Failed to get user actions array from LineageGlobalActions", t);
+        }
+        if (mActions == null || mActions.length == 0) {
+            mActions = getDefaultActions();
+        }
     }
 
     /**
@@ -552,19 +559,24 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
     }
 
     private void handleShow() {
-        awakenIfNecessary();
-        mDialog = createDialog();
-        prepareDialog();
-        seedFavorites();
+        try {
+            awakenIfNecessary();
+            mDialog = createDialog();
+            prepareDialog();
+            seedFavorites();
 
-        WindowManager.LayoutParams attrs = mDialog.getWindow().getAttributes();
-        attrs.setTitle("ActionsDialog");
-        attrs.layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
-        mDialog.getWindow().setAttributes(attrs);
-        // Don't acquire soft keyboard focus, to avoid destroying state when capturing bugreports
-        mDialog.getWindow().setFlags(FLAG_ALT_FOCUSABLE_IM, FLAG_ALT_FOCUSABLE_IM);
-        mDialog.show();
-        mWindowManagerFuncs.onGlobalActionsShown();
+            WindowManager.LayoutParams attrs = mDialog.getWindow().getAttributes();
+            attrs.setTitle("ActionsDialog");
+            attrs.layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+            mDialog.getWindow().setAttributes(attrs);
+            // Don't acquire soft keyboard focus, to avoid destroying state when capturing bugreports
+            mDialog.getWindow().setFlags(FLAG_ALT_FOCUSABLE_IM, FLAG_ALT_FOCUSABLE_IM);
+            mDialog.show();
+            mWindowManagerFuncs.onGlobalActionsShown();
+        } catch (Throwable t) {
+            Log.e(TAG, "Failed to show global actions dialog", t);
+            mWindowManagerFuncs.onGlobalActionsShown();
+        }
     }
 
     @VisibleForTesting
@@ -654,6 +666,10 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
         if (mEmergencyAffordanceManager.needsEmergencyAffordance()) {
             addIfShouldShowAction(tempActions, new EmergencyAffordanceAction());
             addedKeys.add(GLOBAL_ACTION_KEY_EMERGENCY);
+        }
+
+        if (mActions == null || mActions.length == 0) {
+            mActions = getDefaultActions();
         }
 
         for (int i = 0; i < mActions.length; i++) {
@@ -2351,7 +2367,14 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
     @Override
     public void onTuningChanged(String key, String newValue) {
         if (POWER_MENU_ACTIONS_STRING.equals(key)) {
-            mActions = mLineageGlobalActions.getUserActionsArray();
+            try {
+                mActions = mLineageGlobalActions.getUserActionsArray();
+            } catch (Throwable t) {
+                Log.e(TAG, "Failed to get user actions array from LineageGlobalActions", t);
+            }
+            if (mActions == null || mActions.length == 0) {
+                mActions = getDefaultActions();
+            }
         }
     }
 

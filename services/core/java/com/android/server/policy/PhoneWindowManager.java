@@ -634,6 +634,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private boolean mScreenshotChordPowerKeyTriggered;
     private long mScreenshotChordPowerKeyTime;
 
+    private SwipeToScreenshotListener mSwipeToScreenshot;
+    private boolean mSwipeToScreenshotEnabled = false;
+
     // Ringer toggle should reuse timing and triggering from screenshot power and a11y vol up
     private int mRingerToggleChord = VOLUME_HUSH_OFF;
 
@@ -831,6 +834,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             ContentResolver resolver = mContext.getContentResolver();
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.END_BUTTON_BEHAVIOR), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.THREE_FINGER_GESTURE), false, this,
                     UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.Secure.getUriFor(
                     Settings.Secure.INCALL_POWER_BUTTON_BEHAVIOR), false, this,
@@ -2059,6 +2065,18 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         mWakeGestureListener = new MyWakeGestureListener(mContext, mHandler);
         mSettingsObserver = new SettingsObserver(mHandler);
 
+        mSwipeToScreenshot = new SwipeToScreenshotListener(mContext, new SwipeToScreenshotListener.Callbacks() {
+            @Override
+            public void onSwipeThreeFinger() {
+                if (isScreenOn() && mScreenshotRunnable != null) {
+                    performHapticFeedback(HapticFeedbackConstants.LONG_PRESS, false, "3-Finger Screenshot");
+                    mScreenshotRunnable.setScreenshotType(TAKE_SCREENSHOT_FULLSCREEN);
+                    mScreenshotRunnable.setScreenshotSource(SCREENSHOT_KEY_OTHER);
+                    mHandler.post(mScreenshotRunnable);
+                }
+            }
+        });
+
         // Lineage additions
         mAlarmManager = mContext.getSystemService(AlarmManager.class);
         mCameraManager = (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
@@ -2409,6 +2427,18 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             if (!mContext.getResources()
                     .getBoolean(com.android.internal.R.bool.config_volumeHushGestureEnabled)) {
                 mRingerToggleChord = Settings.Secure.VOLUME_HUSH_OFF;
+            }
+
+            boolean swipeToScreenshotEnabled = Settings.System.getIntForUser(resolver,
+                    Settings.System.THREE_FINGER_GESTURE, 1,
+                    UserHandle.USER_CURRENT) == 1;
+            if (mSwipeToScreenshot != null && mSwipeToScreenshotEnabled != swipeToScreenshotEnabled) {
+                mSwipeToScreenshotEnabled = swipeToScreenshotEnabled;
+                if (mSwipeToScreenshotEnabled) {
+                    mWindowManagerFuncs.registerPointerEventListener(mSwipeToScreenshot, Display.DEFAULT_DISPLAY);
+                } else {
+                    mWindowManagerFuncs.unregisterPointerEventListener(mSwipeToScreenshot, Display.DEFAULT_DISPLAY);
+                }
             }
 
             mTorchLongPressPowerEnabled = LineageSettings.System.getIntForUser(

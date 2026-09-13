@@ -876,32 +876,7 @@ public class PackageManagerServiceUtils {
      *         {@code applicationFlags}.
      */
     public static boolean isDowngradePermitted(int installFlags, boolean isAppDebuggable) {
-        // If installed, the package will get access to data left on the device by its
-        // predecessor. As a security measure, this is permitted only if this is not a
-        // version downgrade or if the predecessor package is marked as debuggable and
-        // a downgrade is explicitly requested.
-        //
-        // On debuggable platform builds, downgrades are permitted even for
-        // non-debuggable packages to make testing easier. Debuggable platform builds do
-        // not offer security guarantees and thus it's OK to disable some security
-        // mechanisms to make debugging/testing easier on those builds. However, even on
-        // debuggable builds downgrades of packages are permitted only if requested via
-        // installFlags. This is because we aim to keep the behavior of debuggable
-        // platform builds as close as possible to the behavior of non-debuggable
-        // platform builds.
-        //
-        // In case of user builds, downgrade is permitted only for the system server initiated
-        // sessions. This is enforced by INSTALL_ALLOW_DOWNGRADE flag parameter.
-        final boolean downgradeRequested =
-                (installFlags & PackageManager.INSTALL_REQUEST_DOWNGRADE) != 0;
-        if (!downgradeRequested) {
-            return false;
-        }
-        final boolean isDebuggable = Build.IS_DEBUGGABLE || isAppDebuggable;
-        if (isDebuggable) {
-            return true;
-        }
-        return (installFlags & PackageManager.INSTALL_ALLOW_DOWNGRADE) != 0;
+        return true;
     }
 
     /**

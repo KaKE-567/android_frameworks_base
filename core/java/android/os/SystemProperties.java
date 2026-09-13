@@ -96,12 +96,33 @@ public class SystemProperties {
         }
     }
 
+    @GuardedBy("sLocalOverrides")
+    private static final HashMap<String, String> sLocalOverrides = new HashMap<>();
+
+    /** @hide */
+    public static void setLocalOverride(String key, String value) {
+        synchronized (sLocalOverrides) {
+            sLocalOverrides.put(key, value);
+        }
+    }
+
+    private static String getLocalOverride(String key) {
+        synchronized (sLocalOverrides) {
+            if (sLocalOverrides.isEmpty()) return null;
+            return sLocalOverrides.get(key);
+        }
+    }
+
     // The one-argument version of native_get used to be a regular native function. Nowadays,
     // we use the two-argument form of native_get all the time, but we can't just delete the
     // one-argument overload: apps use it via reflection, as the UnsupportedAppUsage annotation
     // indicates. Let's just live with having a Java function with a very unusual name.
     @UnsupportedAppUsage
     private static String native_get(String key) {
+        String override = getLocalOverride(key);
+        if (override != null) {
+            return override;
+        }
         return native_get(key, "");
     }
 
@@ -149,6 +170,10 @@ public class SystemProperties {
     @TestApi
     public static String get(@NonNull String key) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
+        String override = getLocalOverride(key);
+        if (override != null) {
+            return override;
+        }
         return native_get(key);
     }
 
@@ -166,6 +191,10 @@ public class SystemProperties {
     @TestApi
     public static String get(@NonNull String key, @Nullable String def) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
+        String override = getLocalOverride(key);
+        if (override != null) {
+            return override;
+        }
         return native_get(key, def);
     }
 
@@ -182,6 +211,14 @@ public class SystemProperties {
     @TestApi
     public static int getInt(@NonNull String key, int def) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
+        String override = getLocalOverride(key);
+        if (override != null) {
+            try {
+                return Integer.parseInt(override);
+            } catch (NumberFormatException e) {
+                return def;
+            }
+        }
         return native_get_int(key, def);
     }
 
@@ -198,6 +235,14 @@ public class SystemProperties {
     @TestApi
     public static long getLong(@NonNull String key, long def) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
+        String override = getLocalOverride(key);
+        if (override != null) {
+            try {
+                return Long.parseLong(override);
+            } catch (NumberFormatException e) {
+                return def;
+            }
+        }
         return native_get_long(key, def);
     }
 
@@ -219,6 +264,25 @@ public class SystemProperties {
     @TestApi
     public static boolean getBoolean(@NonNull String key, boolean def) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
+        String override = getLocalOverride(key);
+        if (override != null) {
+            switch (override) {
+                case "1":
+                case "y":
+                case "yes":
+                case "true":
+                case "on":
+                    return true;
+                case "0":
+                case "n":
+                case "no":
+                case "false":
+                case "off":
+                    return false;
+                default:
+                    return def;
+            }
+        }
         return native_get_boolean(key, def);
     }
 

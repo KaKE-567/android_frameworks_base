@@ -3706,6 +3706,13 @@ public final class Settings {
         public static final int ADVANCED_SETTINGS_DEFAULT = 0;
 
         /**
+         * Three finger swipe down to take screenshot.
+         * 0 = disabled, 1 = enabled.
+         * @hide
+         */
+        public static final String THREE_FINGER_GESTURE = "three_finger_gesture";
+
+        /**
          * @deprecated Use {@link android.provider.Settings.Global#AIRPLANE_MODE_ON} instead
          */
         @Deprecated
@@ -5241,6 +5248,7 @@ public final class Settings {
             return isCallingPackageAllowedToWriteSettings(context, Process.myUid(),
                     context.getOpPackageName(), false);
         }
+
     }
 
     /**

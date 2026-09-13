@@ -113,6 +113,7 @@ import com.android.internal.app.procstats.ProcessStats;
 import com.android.internal.os.Zygote;
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.FrameworkStatsLog;
+import com.android.internal.util.GamePropsUtils;
 import com.android.internal.util.MemInfoReader;
 import com.android.server.LocalServices;
 import com.android.server.ServiceThread;
@@ -1769,7 +1770,9 @@ public final class ProcessList {
                     final IPackageManager pm = AppGlobals.getPackageManager();
                     permGids = pm.getPackageGids(app.info.packageName,
                             MATCH_DIRECT_BOOT_AUTO, app.userId);
-                    if (StorageManager.hasIsolatedStorage() && mountExtStorageFull) {
+                    if (app.info.packageName != null && GamePropsUtils.isStorageExemptPackage(app.info.packageName)) {
+                        mountExternal = Zygote.MOUNT_EXTERNAL_FULL;
+                    } else if (StorageManager.hasIsolatedStorage() && mountExtStorageFull) {
                         mountExternal = Zygote.MOUNT_EXTERNAL_FULL;
                     } else {
                         StorageManagerInternal storageManagerInternal = LocalServices.getService(
@@ -2702,6 +2705,20 @@ public final class ProcessList {
                         continue;
                     }
                     if (!app.pkgList.containsKey(packageName) && !isDep) {
+                        continue;
+                    }
+                }
+
+                // Do not kill visible/foreground apps or exempt storage packages for permission/op/gid changes
+                if (reasonCode == ApplicationExitInfo.REASON_PERMISSION_CHANGE
+                        || (reason != null && (reason.contains("app op changed")
+                                || reason.contains("gids changed")
+                                || reason.contains("changed.")))) {
+                    if (app.hasForegroundActivities()
+                            || (app.getWindowProcessController() != null
+                                    && app.getWindowProcessController().hasVisibleActivities())
+                            || (app.info != null && GamePropsUtils.isStorageExemptPackage(app.info.packageName))) {
+                        Slog.w(TAG, "Skipping kill of active app " + app.processName + " for reason: " + reason);
                         continue;
                     }
                 }

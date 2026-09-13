@@ -62,6 +62,7 @@ import com.android.systemui.R;
 import com.android.systemui.SystemUIFactory;
 import com.android.systemui.broadcast.BroadcastDispatcher;
 import com.android.systemui.bubbles.BubbleController;
+import com.android.systemui.gaming.GamingModeController;
 import com.android.systemui.model.SysUiState;
 import com.android.systemui.plugins.NavigationEdgeBackPlugin;
 import com.android.systemui.plugins.PluginListener;
@@ -234,6 +235,14 @@ public class EdgeBackGestureHandler extends CurrentUserTracker implements Displa
             new NavigationEdgeBackPlugin.BackCallback() {
                 @Override
                 public void triggerBack(boolean isLongPress) {
+                    GamingModeController gamingController = GamingModeController.getInstance();
+                    if (gamingController != null && gamingController.shouldBlockForGamingMistouch()) {
+                        mOverviewProxyService.notifyBackAction(false, (int) mDownPoint.x,
+                                (int) mDownPoint.y, false /* isButton */, !mIsOnLeftEdge);
+                        logGesture(SysUiStatsLog.BACK_GESTURE__TYPE__INCOMPLETE);
+                        return;
+                    }
+
                     sendEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK,
                             isLongPress ? KeyEvent.FLAG_LONG_SWIPE : 0);
                     sendEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK,

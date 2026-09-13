@@ -202,7 +202,8 @@ public class NavigationModeController implements Dumpable {
                 final int defInset = mCurrentUserContext.getResources().getDimensionPixelSize(
                         com.android.internal.R.dimen.config_backGestureInset);
 
-                final float scale = defInset == 0 ? 1.0f : ((float) curInset) / defInset;
+                final float rawScale = (curInset <= 0 || defInset <= 0) ? 1.0f : ((float) curInset) / defInset;
+                final float scale = rawScale <= 0.0f ? 1.0f : rawScale;
                 Settings.Secure.putFloat(mCurrentUserContext.getContentResolver(),
                         Secure.BACK_GESTURE_INSET_SCALE_LEFT, scale);
                 Settings.Secure.putFloat(mCurrentUserContext.getContentResolver(),

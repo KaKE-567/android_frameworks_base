@@ -55,6 +55,7 @@ import com.android.internal.R;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.ArrayUtils;
+import com.android.internal.util.GamePropsUtils;
 import com.android.server.FgThread;
 import com.android.server.compat.CompatChange;
 import com.android.server.om.OverlayReferenceMapper;
@@ -978,6 +979,26 @@ public class AppsFilter {
                     || callingAppId == targetPkgSetting.appId) {
                 return false;
             }
+            String callingPkg = null;
+            if (callingSetting != null && callingSetting instanceof PackageSetting) {
+                PackageSetting ps = (PackageSetting) callingSetting;
+                if (ps.pkg != null) {
+                    callingPkg = ps.pkg.getPackageName();
+                    if (GamePropsUtils.isTelegramPackage(callingPkg)) {
+                        return false;
+                    }
+                }
+            }
+            if (targetPkgSetting.pkg != null) {
+                final String targetPkgName = targetPkgSetting.pkg.getPackageName();
+                if ("com.android.packageinstaller".equals(targetPkgName)
+                        || "com.google.android.packageinstaller".equals(targetPkgName)) {
+                    return false;
+                }
+                if (GamePropsUtils.isSensitivePackageForCaller(targetPkgName, callingPkg, callingUid)) {
+                    return true;
+                }
+            }
             synchronized (mCacheLock) {
                 if (mShouldFilterCache != null) { // use cache
                     SparseBooleanArray shouldFilterTargets = mShouldFilterCache.get(callingUid);
@@ -1078,7 +1099,22 @@ public class AppsFilter {
                 // not an app, this filtering takes place at a higher level
                 return false;
             }
+            if (targetPkgSetting.appId < Process.FIRST_APPLICATION_UID) {
+                return false;
+            }
             final String targetName = targetPkg.getPackageName();
+            if ("com.android.packageinstaller".equals(targetName)
+                    || "com.google.android.packageinstaller".equals(targetName)) {
+                return false;
+            }
+            String callingPkg = (callingPkgSetting != null && callingPkgSetting.pkg != null)
+                    ? callingPkgSetting.pkg.getPackageName() : null;
+            if (GamePropsUtils.isSensitivePackageForCaller(targetName, callingPkg, callingUid)) {
+                return true;
+            }
+            if (callingPkg != null && GamePropsUtils.isTelegramPackage(callingPkg)) {
+                return false;
+            }
             Trace.traceBegin(TRACE_TAG_PACKAGE_MANAGER, "getAppId");
             final int callingAppId;
             if (callingPkgSetting != null) {

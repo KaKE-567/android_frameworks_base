@@ -103,9 +103,11 @@ class GlobalActions implements GlobalActionsProvider.GlobalActionsListener {
         @Override
         public void run() {
             if (DEBUG) Slog.d(TAG, "Global actions timeout");
-            // We haven't heard from sysui, show the legacy dialog.
-            ensureLegacyCreated();
-            mLegacyGlobalActions.showDialog(mKeyguardShowing, mDeviceProvisioned);
+            // Only show legacy dialog if SystemUI is truly not alive
+            if (!mGlobalActionsAvailable) {
+                ensureLegacyCreated();
+                mLegacyGlobalActions.showDialog(mKeyguardShowing, mDeviceProvisioned);
+            }
         }
     };
 }

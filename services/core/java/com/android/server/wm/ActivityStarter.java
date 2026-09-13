@@ -87,9 +87,11 @@ import android.app.IApplicationThread;
 import android.app.PendingIntent;
 import android.app.ProfilerInfo;
 import android.app.WaitResult;
+import android.content.ComponentName;
 import android.content.IIntentSender;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.net.Uri;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.AuxiliaryResolveInfo;
@@ -488,9 +490,49 @@ class ActivityStarter {
                 intent.setComponent(null /* component */);
             }
 
+            if (intent != null && (Intent.ACTION_VIEW.equals(intent.getAction())
+                    || Intent.ACTION_INSTALL_PACKAGE.equals(intent.getAction()))) {
+                final Uri data = intent.getData();
+                final String dataStr = data != null ? data.toString().toLowerCase() : null;
+                final boolean isApk = (dataStr != null && (dataStr.endsWith(".apk")
+                        || dataStr.contains(".apk?") || dataStr.contains(".apk/")))
+                        || "application/vnd.android.package-archive".equals(resolvedType);
+                if (isApk) {
+                    resolvedType = "application/vnd.android.package-archive";
+                    intent.setDataAndTypeAndNormalize(intent.getData(), resolvedType);
+                }
+            }
+
             resolveInfo = supervisor.resolveIntent(intent, resolvedType, userId,
                     0 /* matchFlags */,
                     computeResolveFilterUid(callingUid, realCallingUid, filterCallingUid));
+            if (resolveInfo == null && intent != null && (Intent.ACTION_VIEW.equals(intent.getAction())
+                    || Intent.ACTION_INSTALL_PACKAGE.equals(intent.getAction()))) {
+                final Uri data = intent.getData();
+                final String dataStr = data != null ? data.toString().toLowerCase() : null;
+                final boolean isApk = (dataStr != null && (dataStr.endsWith(".apk")
+                        || dataStr.contains(".apk?") || dataStr.contains(".apk/")))
+                        || "application/vnd.android.package-archive".equals(resolvedType);
+                if (isApk) {
+                    resolvedType = "application/vnd.android.package-archive";
+                    intent.setDataAndTypeAndNormalize(intent.getData(), resolvedType);
+                    intent.setComponent(new ComponentName("com.android.packageinstaller",
+                            "com.android.packageinstaller.InstallStart"));
+                    resolveInfo = supervisor.resolveIntent(intent, resolvedType, userId,
+                            0 /* matchFlags */,
+                            computeResolveFilterUid(callingUid, realCallingUid, filterCallingUid));
+                    if (resolveInfo == null) {
+                        intent.setComponent(new ComponentName("com.google.android.packageinstaller",
+                                "com.android.packageinstaller.InstallStart"));
+                        resolveInfo = supervisor.resolveIntent(intent, resolvedType, userId,
+                                0 /* matchFlags */,
+                                computeResolveFilterUid(callingUid, realCallingUid, filterCallingUid));
+                    }
+                    if (resolveInfo == null) {
+                        intent.setComponent(null);
+                    }
+                }
+            }
             if (resolveInfo == null) {
                 final UserInfo userInfo = supervisor.getUserInfo(userId);
                 if (userInfo != null && userInfo.isManagedProfile()) {

@@ -680,6 +680,15 @@ public class ApplicationPackageManager extends PackageManager {
 
     @Override
     public boolean hasSystemFeature(String name, int version) {
+        String packageName = ActivityThread.currentPackageName();
+        if (packageName != null && packageName.startsWith("com.google.android.apps.photos")) {
+            if ("com.google.android.feature.PIXEL_2016_EXPERIENCE".equals(name)
+                    || "com.google.android.apps.photos.NEXUS_PRELOAD".equals(name)
+                    || "com.google.android.apps.photos.nexus_preload".equals(name)
+                    || "com.google.android.feature.PIXEL_EXPERIENCE".equals(name)) {
+                return true;
+            }
+        }
         return mHasSystemFeatureCache.query(new HasSystemFeatureQuery(name, version));
     }
 

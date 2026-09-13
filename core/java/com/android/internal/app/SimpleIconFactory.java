@@ -70,7 +70,7 @@ public class SimpleIconFactory {
     private static final SynchronizedPool<SimpleIconFactory> sPool =
             new SynchronizedPool<>(Runtime.getRuntime().availableProcessors());
 
-    private static final int DEFAULT_WRAPPER_BACKGROUND = Color.WHITE;
+    private static final int DEFAULT_WRAPPER_BACKGROUND = 0xFF1C1C1E;
     private static final float BLUR_FACTOR = 0.5f / 48;
 
     private Context mContext;
@@ -402,6 +402,146 @@ public class SimpleIconFactory {
 
         icon.setBounds(mOldBounds);
         mCanvas.setBitmap(null);
+        return applyIosDarkTheming(bitmap);
+    }
+
+    private static boolean isLightColor(int color) {
+        int a = (color >>> 24);
+        if (a < 20) {
+            return false;
+        }
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = color & 0xFF;
+        if (r > 130 && g > 130 && b > 130) {
+            int max = Math.max(r, Math.max(g, b));
+            int min = Math.min(r, Math.min(g, b));
+            return (max - min) <= 45;
+        }
+        return false;
+    }
+
+    public static Bitmap applyIosDarkTheming(Bitmap bitmap) {
+        if (bitmap == null || bitmap.isRecycled()) {
+            return bitmap;
+        }
+        final int w = bitmap.getWidth();
+        final int h = bitmap.getHeight();
+        if (w < 16 || h < 16) {
+            return bitmap;
+        }
+
+        final int[] pixels = new int[w * h];
+        bitmap.getPixels(pixels, 0, w, 0, 0, w, h);
+
+        int[] queue = new int[w * h];
+        boolean[] visited = new boolean[w * h];
+        int head = 0;
+        int tail = 0;
+
+        int totalBorderCount = 0;
+        int seedCount = 0;
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int idx = y * w + x;
+                int c = pixels[idx];
+                int a = (c >>> 24);
+                if (a >= 20) {
+                    boolean isBorder = (x == 0 || x == w - 1 || y == 0 || y == h - 1);
+                    if (!isBorder) {
+                        int left = (pixels[idx - 1] >>> 24);
+                        int right = (pixels[idx + 1] >>> 24);
+                        int top = (pixels[idx - w] >>> 24);
+                        int bottom = (pixels[idx + w] >>> 24);
+                        if (left < 64 || right < 64 || top < 64 || bottom < 64) {
+                            isBorder = true;
+                        }
+                    }
+                    if (isBorder) {
+                        totalBorderCount++;
+                        if (isLightColor(c)) {
+                            visited[idx] = true;
+                            queue[tail++] = idx;
+                            seedCount++;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (seedCount < 30 || seedCount * 2 < totalBorderCount) {
+            return bitmap;
+        }
+
+        while (head < tail) {
+            int curr = queue[head++];
+            int a = pixels[curr] >>> 24;
+            pixels[curr] = (a << 24) | 0x001C1C1E;
+
+            int cx = curr % w;
+            int cy = curr / w;
+
+            if (cx > 0) {
+                int n = curr - 1;
+                if (!visited[n] && isLightColor(pixels[n])) {
+                    visited[n] = true;
+                    queue[tail++] = n;
+                }
+            }
+            if (cx < w - 1) {
+                int n = curr + 1;
+                if (!visited[n] && isLightColor(pixels[n])) {
+                    visited[n] = true;
+                    queue[tail++] = n;
+                }
+            }
+            if (cy > 0) {
+                int n = curr - w;
+                if (!visited[n] && isLightColor(pixels[n])) {
+                    visited[n] = true;
+                    queue[tail++] = n;
+                }
+            }
+            if (cy < h - 1) {
+                int n = curr + w;
+                if (!visited[n] && isLightColor(pixels[n])) {
+                    visited[n] = true;
+                    queue[tail++] = n;
+                }
+            }
+        }
+
+        // Defringing pass: eliminate any anti-aliased border fringe within distance 2 of flooded area
+        for (int i = 0; i < tail; i++) {
+            int curr = queue[i];
+            int cx = curr % w;
+            int cy = curr / w;
+            for (int dy = -2; dy <= 2; dy++) {
+                int ny = cy + dy;
+                if (ny < 0 || ny >= h) continue;
+                for (int dx = -2; dx <= 2; dx++) {
+                    int nx = cx + dx;
+                    if (nx < 0 || nx >= w) continue;
+                    int n = ny * w + nx;
+                    if (visited[n]) continue;
+                    int c = pixels[n];
+                    int a = (c >>> 24);
+                    if (a > 0) {
+                        int r = (c >> 16) & 0xFF;
+                        int g = (c >> 8) & 0xFF;
+                        int b = c & 0xFF;
+                        int max = Math.max(r, Math.max(g, b));
+                        int min = Math.min(r, Math.min(g, b));
+                        if (r > 30 && (max - min) <= 45) {
+                            pixels[n] = (a << 24) | 0x001C1C1E;
+                            visited[n] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        bitmap.setPixels(pixels, 0, w, 0, 0, w, h);
         return bitmap;
     }
 

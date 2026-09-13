@@ -756,11 +756,7 @@ public final class SurfaceControl implements Parcelable {
          */
         @NonNull
         public Builder setSecure(boolean secure) {
-            if (secure) {
-                mFlags |= SECURE;
-            } else {
-                mFlags &= ~SECURE;
-            }
+            mFlags &= ~SECURE;
             return this;
         }
 
@@ -2826,11 +2822,7 @@ public final class SurfaceControl implements Parcelable {
          */
         public Transaction setSecure(SurfaceControl sc, boolean isSecure) {
             checkPreconditions(sc);
-            if (isSecure) {
-                nativeSetFlags(mNativeObject, sc.mNativeObject, SECURE, SECURE);
-            } else {
-                nativeSetFlags(mNativeObject, sc.mNativeObject, 0, SECURE);
-            }
+            nativeSetFlags(mNativeObject, sc.mNativeObject, 0, SECURE);
             return this;
         }
 

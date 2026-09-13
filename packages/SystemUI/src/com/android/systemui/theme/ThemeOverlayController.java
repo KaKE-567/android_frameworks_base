@@ -99,16 +99,29 @@ public class ThemeOverlayController extends SystemUI {
     private OverlayManager mOverlayManager;
 
     private void applyBlackTheme(boolean state) {
-        UserHandle userId = UserHandle.of(ActivityManager.getCurrentUser());
+        final int currentUser = ActivityManager.getCurrentUser();
+        UserHandle userId = UserHandle.of(currentUser);
         try {
-            mOverlayManager.setEnabled(OVERLAY_BERRY_BLACK_THEME, state, userId);
-            if (DEBUG) {
-                Log.d(TAG, "applyBlackTheme: overlayPackage="
-                        + OVERLAY_BERRY_BLACK_THEME + " userId=" + userId);
+            if (mOverlayManager == null) {
+                mOverlayManager = mContext.getSystemService(OverlayManager.class);
             }
+            if (mOverlayManager != null) {
+                mOverlayManager.setEnabled(OVERLAY_BERRY_BLACK_THEME, state, userId);
+                if (!UserHandle.SYSTEM.equals(userId)) {
+                    mOverlayManager.setEnabled(OVERLAY_BERRY_BLACK_THEME, state, UserHandle.SYSTEM);
+                }
+                if (mUserManager != null) {
+                    for (UserInfo userInfo : mUserManager.getEnabledProfiles(currentUser)) {
+                        if (userInfo.isManagedProfile()) {
+                            mOverlayManager.setEnabled(OVERLAY_BERRY_BLACK_THEME, state, userInfo.getUserHandle());
+                        }
+                    }
+                }
+            }
+            Log.d(TAG, "applyBlackTheme: enabled=" + state + " for user " + userId);
         } catch (Exception e) {
             Log.e(TAG, "Failed to " + (state ? "enable" : "disable")
-                    + " overlay " + OVERLAY_BERRY_BLACK_THEME + " for user " + userId);
+                    + " overlay " + OVERLAY_BERRY_BLACK_THEME + " for user " + userId, e);
         }
     }
 
@@ -168,6 +181,15 @@ public class ThemeOverlayController extends SystemUI {
             } catch (JSONException e) {
                 Log.i(TAG, "Failed to parse THEME_CUSTOMIZATION_OVERLAY_PACKAGES.", e);
             }
+        }
+        // Default status bar icon pack to OneUI 7 (Sam) out of the box
+        if (!categoryToPackage.containsKey(ThemeOverlayManager.OVERLAY_CATEGORY_ICON_SYSUI)
+                && (TextUtils.isEmpty(overlayPackageJson) || !overlayPackageJson.contains(ThemeOverlayManager.OVERLAY_CATEGORY_ICON_SYSUI))) {
+            categoryToPackage.put(ThemeOverlayManager.OVERLAY_CATEGORY_ICON_SYSUI, "com.android.theme.icon_pack.sam.systemui");
+        }
+        if (!categoryToPackage.containsKey(ThemeOverlayManager.OVERLAY_CATEGORY_ICON_ANDROID)
+                && (TextUtils.isEmpty(overlayPackageJson) || !overlayPackageJson.contains(ThemeOverlayManager.OVERLAY_CATEGORY_ICON_ANDROID))) {
+            categoryToPackage.put(ThemeOverlayManager.OVERLAY_CATEGORY_ICON_ANDROID, "com.android.theme.icon_pack.sam.android");
         }
         Set<UserHandle> userHandles = Sets.newHashSet(UserHandle.of(currentUser));
         for (UserInfo userInfo : mUserManager.getEnabledProfiles(currentUser)) {

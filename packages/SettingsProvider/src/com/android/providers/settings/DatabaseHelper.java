@@ -2381,6 +2381,14 @@ class DatabaseHelper extends SQLiteOpenHelper {
             loadBooleanSetting(stmt, Settings.Secure.USER_SETUP_COMPLETE,
                     R.bool.def_user_setup_complete);
 
+            loadSetting(stmt, Settings.Secure.DEFAULT_INPUT_METHOD,
+                    "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME");
+            loadSetting(stmt, Settings.Secure.ENABLED_INPUT_METHODS,
+                    "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME");
+
+            loadSetting(stmt, Settings.Secure.BACK_GESTURE_INSET_SCALE_LEFT, "1.0");
+            loadSetting(stmt, Settings.Secure.BACK_GESTURE_INSET_SCALE_RIGHT, "1.0");
+
             loadStringSetting(stmt, Settings.Secure.IMMERSIVE_MODE_CONFIRMATIONS,
                         R.string.def_immersive_mode_confirmations);
 

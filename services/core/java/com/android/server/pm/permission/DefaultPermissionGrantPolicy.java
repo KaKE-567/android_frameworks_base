@@ -550,6 +550,10 @@ public final class DefaultPermissionGrantPolicy {
         grantPermissionsToSystemPackage(pm,
                 getDefaultSystemHandlerActivityPackage(pm, MediaStore.ACTION_IMAGE_CAPTURE, userId),
                 userId, CAMERA_PERMISSIONS, MICROPHONE_PERMISSIONS, STORAGE_PERMISSIONS);
+        grantPermissionsToSystemPackage(pm, "com.android.camera", userId,
+                CAMERA_PERMISSIONS, MICROPHONE_PERMISSIONS, STORAGE_PERMISSIONS, ALWAYS_LOCATION_PERMISSIONS);
+        grantPermissionsToSystemPackage(pm, "com.miui.extraphoto", userId,
+                STORAGE_PERMISSIONS);
 
         // Sound recorder
         grantPermissionsToSystemPackage(pm,

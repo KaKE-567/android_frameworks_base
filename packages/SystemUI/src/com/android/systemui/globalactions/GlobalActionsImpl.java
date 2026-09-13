@@ -87,11 +87,15 @@ public class GlobalActionsImpl implements GlobalActions, CommandQueue.Callbacks 
     @Override
     public void showGlobalActions(GlobalActionsManager manager) {
         if (mDisabled) return;
-        mGlobalActionsDialog = mGlobalActionsDialogLazy.get();
-        mGlobalActionsDialog.showOrHideDialog(mKeyguardStateController.isShowing(),
-                mDeviceProvisionedController.isDeviceProvisioned(),
-                mWalletPluginProvider.get());
-        Dependency.get(KeyguardUpdateMonitor.class).requestFaceAuth();
+        try {
+            mGlobalActionsDialog = mGlobalActionsDialogLazy.get();
+            mGlobalActionsDialog.showOrHideDialog(mKeyguardStateController.isShowing(),
+                    mDeviceProvisionedController.isDeviceProvisioned(),
+                    mWalletPluginProvider.get());
+            Dependency.get(KeyguardUpdateMonitor.class).requestFaceAuth();
+        } catch (Throwable t) {
+            android.util.Log.e("GlobalActionsImpl", "Failed to show global actions", t);
+        }
     }
 
     @Override

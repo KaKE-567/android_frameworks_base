@@ -18,6 +18,7 @@ package com.android.settingslib;
 
 import android.annotation.IntDef;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.view.View;
 import android.widget.ImageView;
@@ -48,26 +49,35 @@ public class TwoTargetPreference extends Preference {
     public TwoTargetPreference(Context context, AttributeSet attrs,
             int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
-        init(context);
+        init(context, attrs);
     }
 
     public TwoTargetPreference(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        init(context);
+        init(context, attrs);
     }
 
     public TwoTargetPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init(context);
+        init(context, attrs);
     }
 
     public TwoTargetPreference(Context context) {
         super(context);
-        init(context);
+        init(context, null);
     }
 
-    private void init(Context context) {
-        setLayoutResource(R.layout.preference_two_target);
+    private void init(Context context, AttributeSet attrs) {
+        boolean hasCustomLayout = false;
+        if (attrs != null) {
+            final TypedArray a = context.obtainStyledAttributes(attrs,
+                    new int[] { android.R.attr.layout });
+            hasCustomLayout = a.hasValue(0);
+            a.recycle();
+        }
+        if (!hasCustomLayout) {
+            setLayoutResource(R.layout.preference_two_target);
+        }
         mSmallIconSize = context.getResources().getDimensionPixelSize(
                 R.dimen.two_target_pref_small_icon_size);
         mMediumIconSize = context.getResources().getDimensionPixelSize(
@@ -86,14 +96,16 @@ public class TwoTargetPreference extends Preference {
     public void onBindViewHolder(PreferenceViewHolder holder) {
         super.onBindViewHolder(holder);
         final ImageView icon = holder.itemView.findViewById(android.R.id.icon);
-        switch (mIconSize) {
-            case ICON_SIZE_SMALL:
-                icon.setLayoutParams(new LinearLayout.LayoutParams(mSmallIconSize, mSmallIconSize));
-                break;
-            case ICON_SIZE_MEDIUM:
-                icon.setLayoutParams(
-                        new LinearLayout.LayoutParams(mMediumIconSize, mMediumIconSize));
-                break;
+        if (icon != null) {
+            switch (mIconSize) {
+                case ICON_SIZE_SMALL:
+                    icon.setLayoutParams(new LinearLayout.LayoutParams(mSmallIconSize, mSmallIconSize));
+                    break;
+                case ICON_SIZE_MEDIUM:
+                    icon.setLayoutParams(
+                            new LinearLayout.LayoutParams(mMediumIconSize, mMediumIconSize));
+                    break;
+            }
         }
         final View divider = holder.findViewById(R.id.two_target_divider);
         final View widgetFrame = holder.findViewById(android.R.id.widget_frame);
