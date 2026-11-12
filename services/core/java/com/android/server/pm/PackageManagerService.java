@@ -4459,6 +4459,11 @@ public class PackageManagerService extends IPackageManager.Stub
         if (isCallerSameApp(ps.name, callingUid)) {
             return false;
         }
+
+        // Hide LineageOS custom packages from unprivileged third-party apps (e.g. anti-cheat scanners)
+        if (callingUid >= Process.FIRST_APPLICATION_UID && ps.name != null && ps.name.startsWith("org.lineageos.")) {
+            return true;
+        }
         if (callerIsInstantApp) {
             // both caller and target are both instant, but, different applications, filter
             if (ps.getInstantApp(userId)) {
