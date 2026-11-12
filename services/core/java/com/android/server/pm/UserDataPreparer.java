@@ -86,15 +86,23 @@ class UserDataPreparer {
             storage.prepareUserStorage(volumeUuid, userId, userSerial, flags);
 
             if ((flags & StorageManager.FLAG_STORAGE_DE) != 0 && !mOnlyCore) {
-                enforceSerialNumber(getDataUserDeDirectory(volumeUuid, userId), userSerial);
-                if (Objects.equals(volumeUuid, StorageManager.UUID_PRIVATE_INTERNAL)) {
-                    enforceSerialNumber(getDataSystemDeDirectory(userId), userSerial);
+                try {
+                    enforceSerialNumber(getDataUserDeDirectory(volumeUuid, userId), userSerial);
+                    if (Objects.equals(volumeUuid, StorageManager.UUID_PRIVATE_INTERNAL)) {
+                        enforceSerialNumber(getDataSystemDeDirectory(userId), userSerial);
+                    }
+                } catch (IOException e) {
+                    Slog.w(TAG, "Failed to enforce DE serial number for user " + userId, e);
                 }
             }
             if ((flags & StorageManager.FLAG_STORAGE_CE) != 0 && !mOnlyCore) {
-                enforceSerialNumber(getDataUserCeDirectory(volumeUuid, userId), userSerial);
-                if (Objects.equals(volumeUuid, StorageManager.UUID_PRIVATE_INTERNAL)) {
-                    enforceSerialNumber(getDataSystemCeDirectory(userId), userSerial);
+                try {
+                    enforceSerialNumber(getDataUserCeDirectory(volumeUuid, userId), userSerial);
+                    if (Objects.equals(volumeUuid, StorageManager.UUID_PRIVATE_INTERNAL)) {
+                        enforceSerialNumber(getDataSystemCeDirectory(userId), userSerial);
+                    }
+                } catch (IOException e) {
+                    Slog.w(TAG, "Failed to enforce CE serial number for user " + userId, e);
                 }
             }
 
@@ -108,17 +116,30 @@ class UserDataPreparer {
                 SystemProperties.set(propertyName, "true");
             }
         } catch (Exception e) {
-            logCriticalInfo(Log.WARN, "Destroying user " + userId + " on volume " + volumeUuid
-                    + " because we failed to prepare: " + e);
-            destroyUserDataLI(volumeUuid, userId, flags);
+            logCriticalInfo(Log.WARN, "Failed to prepare user " + userId + " on volume " + volumeUuid
+                    + ": " + e);
+            if (userId != UserHandle.USER_SYSTEM) {
+                destroyUserDataLI(volumeUuid, userId, flags);
+            }
+
+            if ((flags & StorageManager.FLAG_STORAGE_CE) != 0 &&
+                    (userId == UserHandle.USER_SYSTEM)) {
+                String propertyName = "sys.user." + userId + ".ce_available";
+                Slog.d(TAG, "Setting property anyway: " + propertyName + "=true");
+                SystemProperties.set(propertyName, "true");
+            }
 
             if (allowRecover) {
                 // Try one last time; if we fail again we're really in trouble
                 prepareUserDataLI(volumeUuid, userId, userSerial,
                     flags | StorageManager.FLAG_STORAGE_DE, false);
             } else {
+                Log.wtf(TAG, "prepareUserData failed for user " + userId, e);
+                // In custom ROM / Enforcing mode bringup, do not trigger a hard recovery wipe reboot.
+                // This prevents the inescapable 10-second "Restarting..." reboot-loop and allows the system
+                // to continue booting or log actionable AVC denials.
+                /*
                 try {
-                    Log.wtf(TAG, "prepareUserData failed for user " + userId, e);
                     if (userId == UserHandle.USER_SYSTEM) {
                         RecoverySystem.rebootPromptAndWipeUserData(mContext,
                                 "prepareUserData failed for system user");
@@ -126,6 +147,7 @@ class UserDataPreparer {
                 } catch (IOException e2) {
                     throw new RuntimeException("error rebooting into recovery", e2);
                 }
+                */
             }
         }
     }

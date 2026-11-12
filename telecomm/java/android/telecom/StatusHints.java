@@ -16,14 +16,20 @@
 
 package android.telecom;
 
+import android.annotation.Nullable;
 import android.annotation.SystemApi;
 import android.content.ComponentName;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.os.UserHandle;
+import android.util.Log;
+
+import com.android.internal.annotations.VisibleForTesting;
 
 import java.util.Objects;
 
@@ -33,8 +39,9 @@ import java.util.Objects;
 public final class StatusHints implements Parcelable {
 
     private final CharSequence mLabel;
-    private final Icon mIcon;
+    private Icon mIcon;
     private final Bundle mExtras;
+    private static final String TAG = StatusHints.class.getSimpleName();
 
     /**
      * @hide
@@ -48,8 +55,28 @@ public final class StatusHints implements Parcelable {
 
     public StatusHints(CharSequence label, Icon icon, Bundle extras) {
         mLabel = label;
-        mIcon = icon;
+        mIcon = validateAccountIconUserBoundary(icon, Binder.getCallingUserHandle());
         mExtras = extras;
+    }
+
+    /**
+     * @param icon
+     * @hide
+     */
+    @VisibleForTesting
+    public StatusHints(@Nullable Icon icon) {
+        mLabel = null;
+        mExtras = null;
+        mIcon = icon;
+    }
+
+    /**
+     *
+     * @param icon
+     * @hide
+     */
+    public void setIcon(@Nullable Icon icon) {
+        mIcon = icon;
     }
 
     /**
@@ -110,6 +137,49 @@ public final class StatusHints implements Parcelable {
     @Override
     public int describeContents() {
         return 0;
+    }
+
+    /**
+     * Validates the StatusHints image icon to see if it's not in the calling user space.
+     * Invalidates the icon if so, otherwise returns back the original icon.
+     *
+     * @param icon
+     * @return icon (validated)
+     * @hide
+     */
+    public static Icon validateAccountIconUserBoundary(Icon icon, UserHandle callingUserHandle) {
+        // Refer to Icon#getUriString for context. The URI string is invalid for icons of
+        // incompatible types.
+        if (icon != null && icon.getType() == Icon.TYPE_URI) {
+            int callingUserId = callingUserHandle.getIdentifier();
+            int requestingUserId = getUserIdFromAuthority(
+                    icon.getUri().getAuthority(), callingUserId);
+            if (callingUserId != requestingUserId) {
+                return null;
+            }
+
+        }
+        return icon;
+    }
+
+    /**
+     * Derives the user id from the authority or the default user id if none could be found.
+     * @param auth
+     * @param defaultUserId
+     * @return The user id from the given authority.
+     * @hide
+     */
+    public static int getUserIdFromAuthority(String auth, int defaultUserId) {
+        if (auth == null) return defaultUserId;
+        int end = auth.lastIndexOf('@');
+        if (end == -1) return defaultUserId;
+        String userIdString = auth.substring(0, end);
+        try {
+            return Integer.parseInt(userIdString);
+        } catch (NumberFormatException e) {
+            Log.w(TAG, "Error parsing userId." + e);
+            return UserHandle.USER_NULL;
+        }
     }
 
     @Override
